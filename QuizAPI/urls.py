@@ -21,4 +21,7 @@ from QuizApp import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('uploadquiz/', views.upload_quiz_view),
+    path('quizlist/', views.get_quiz_list),
+    path('getquiz/<int:quiz>/', views.get_info_and_quiz),
+    path('getquiz/<int:quiz>/getresult/', views.get_result),
 ]

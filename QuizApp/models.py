@@ -1,5 +1,5 @@
 from django.db import models
-
+from phonenumber_field.modelfields import PhoneNumberField
 
 class Quiz(models.Model):
     title = models.CharField(max_length=100)
@@ -21,3 +21,23 @@ class Answer(models.Model):
 
     def __str__(self):
         return self.content
+
+
+class Candidate(models.Model):
+    fullname = models.CharField()
+    email = models.EmailField()
+    phone = PhoneNumberField(null=False, blank=False, unique=True)
+    birth = models.DateField()
+
+    def __str__(self):
+        return self.fullname
+
+class Result(models.Model):
+    candidate = models.ForeignKey(Candidate, related_name='candidate', on_delete=models.CASCADE)
+    quiz = models.ForeignKey(Quiz, related_name='quiz', on_delete=models.CASCADE)
+    result = models.CharField(max_length=10)
+
+    def __str__(self):
+        return self.result
+
+
