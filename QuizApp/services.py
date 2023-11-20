@@ -1,5 +1,6 @@
 from .models import Quiz, Answer, Question, Candidate, Result
 from docx import Document
+from .serializers import QuestionSerializer, AnswerSerializer
 
 
 def save_result(candidate_id, quiz_id, result, question_count):
@@ -12,13 +13,22 @@ def save_result(candidate_id, quiz_id, result, question_count):
 
 def filter_quiz(quiz):
     """Достает тест из бд и преобразует его в формат для json"""
+
     questions = Question.objects.filter(quiz=quiz)
-    q = questions.values()
+    q_serializer = QuestionSerializer(questions, many=True)
 
     question_ids = questions.values_list('id', flat=True)
     answers = Answer.objects.filter(question__in=question_ids)
-    ans = answers.values()
-    return q, ans
+    a_serializer = AnswerSerializer(answers, many=True)
+
+    return q_serializer.data, a_serializer.data
+"""    questions = Question.objects.filter(quiz=quiz)
+q = questions.values()
+
+question_ids = questions.values_list('id', flat=True)
+answers = Answer.objects.filter(question__in=question_ids)
+ans = answers.values()
+return q, ans"""
 
 
 def create_quiz_from_docx(file):
@@ -48,6 +58,8 @@ def create_quiz_from_docx(file):
 
 
 def create_question(quiz, content):
+    if not quiz or not content:
+        raise ValueError("Quiz and content are required to create a question")
     return Question.objects.create(quiz=quiz, content=content)
 
 

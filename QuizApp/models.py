@@ -24,8 +24,8 @@ class Answer(models.Model):
 
 
 class Candidate(models.Model):
-    fullname = models.CharField()
-    email = models.EmailField()
+    fullname = models.CharField(max_length=120)
+    email = models.EmailField(max_length=100)
     phone = PhoneNumberField(null=False, blank=False, unique=True)
     birth = models.DateField()
 

@@ -1,60 +1,59 @@
-from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import Quiz, Answer, Question
 from .forms import CandidateForm
 from .services import save_result, filter_quiz, create_quiz_from_docx
+from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.parsers import FileUploadParser
+from .serializers import *
 
 
-@csrf_exempt
-def upload_quiz_view(request):
-    """View для отправки теста"""
-    if request.method == 'POST':
-        file = request.FILES.get('docx_file')
 
-        if file:
+class UploadQuizView(APIView):
+    parser_class = (FileUploadParser,)
+
+    def post(self, request, *args, **kwargs):
+        serializer = FileUploadSerializer(data=request.data)
+
+        if serializer.is_valid():
+            file = serializer.validated_data['docx_file']
             result = create_quiz_from_docx(file)
-            return JsonResponse({'result': result})
+            return Response({'result': result}, status=status.HTTP_201_CREATED)
 
-    return JsonResponse({'error': 'Invalid request'})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-def get_quiz_list(request):
-    """View для получения списка всех тестов"""
-    quiz = Quiz.objects.all()
-    quiz_list = list(quiz.values())
-    return JsonResponse({'quiz': quiz_list})
+class GetQuizList(ListAPIView):
+    queryset = Quiz.objects.all()
+    serializer_class = QuizSerializer
 
-@csrf_exempt
-def get_info_and_quiz(request, quiz):
-    """View которое сначало просит пользователя заполнить форму с информацияей о себе, а затем отправляет ему выбранный тест"""
-    if request.method == 'POST':
-        form = CandidateForm(request.POST)
-        if form.is_valid():
-            candidate = form.save()
-            request.session['candidate_id'] = candidate.id  # Сохраняем только ID кандидата в сессии
+class GetInfoAndQuiz(APIView):
+    def post(self, request, quiz):
+        serializer = CandidateSerializer(data=request.data)
+        if serializer.is_valid():
+            candidate = serializer.save()
+            request.session['candidate_id'] = candidate.id
+
             q, ans = filter_quiz(quiz)
 
-            return JsonResponse({
-                'candidate_id': candidate.id,  # Передаем только ID кандидата, а не сам объект
-                'candidate_fullname': candidate.fullname,  # Пример передачи других данных о кандидате
-                'quiz': quiz,
-                'questions': list(q),
-                'answers': list(ans)
+            return Response({
+                'candidate_id': candidate.id,
+                'candidate_fullname': candidate.fullname,
+                'quiz': q,
+                'answers': ans
             })
-    else:
-        form = CandidateForm()
 
-    return JsonResponse({'form': form.as_p()})
+        return Response({'form': serializer.errors})
 
-@csrf_exempt
-def get_result(request, quiz):
-    """View которое предназначенно для сохранения результата прохождения тестирования"""
-    if request.method == 'POST':
-        candidate = request.session.get('candidate_id')
+
+class SaveResultView(APIView):
+    def post(self, request, quiz):
+        candidate_id = request.session.get('candidate_id')
         questions = Question.objects.filter(quiz=quiz)
-        save_result(candidate, quiz, request.POST, len(questions))
-        return JsonResponse({'success': 'Result submitted'})
-    return JsonResponse({'error': 'Invalid request'})
-
-
+        result = save_result(candidate_id, quiz, request.data, len(questions))
+        if result:
+            return Response({'success': 'Result submitted'}, status=status.HTTP_200_OK)
+        return Response({'error': 'Failed to save result'}, status=status.HTTP_400_BAD_REQUEST)
