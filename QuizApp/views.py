@@ -8,6 +8,7 @@ from .services import save_result, filter_quiz, create_quiz_from_docx
 
 @csrf_exempt
 def upload_quiz_view(request):
+    """View для отправки теста"""
     if request.method == 'POST':
         file = request.FILES.get('docx_file')
 
@@ -19,12 +20,14 @@ def upload_quiz_view(request):
 
 
 def get_quiz_list(request):
+    """View для получения списка всех тестов"""
     quiz = Quiz.objects.all()
     quiz_list = list(quiz.values())
     return JsonResponse({'quiz': quiz_list})
 
 @csrf_exempt
 def get_info_and_quiz(request, quiz):
+    """View которое сначало просит пользователя заполнить форму с информацияей о себе, а затем отправляет ему выбранный тест"""
     if request.method == 'POST':
         form = CandidateForm(request.POST)
         if form.is_valid():
@@ -46,6 +49,7 @@ def get_info_and_quiz(request, quiz):
 
 @csrf_exempt
 def get_result(request, quiz):
+    """View которое предназначенно для сохранения результата прохождения тестирования"""
     if request.method == 'POST':
         candidate = request.session.get('candidate_id')
         questions = Question.objects.filter(quiz=quiz)
@@ -54,20 +58,3 @@ def get_result(request, quiz):
     return JsonResponse({'error': 'Invalid request'})
 
 
-
-# def create_quiz_from_db(requset, quiz):
-#     if requset.method == 'GET':
-#         questions = Question.objects.filter(quiz=quiz)
-#         q = questions.values()
-#
-#         question_ids = questions.values_list('id', flat=True)
-#         answers = Answer.objects.filter(question__in=question_ids)
-#         ans = answers.values()
-#
-#         return JsonResponse({
-#             'quiz': quiz,
-#             'questions': list(q),
-#             'answers': list(ans)
-#         })
-#
-#     return JsonResponse({'error': 'Invalid request'})

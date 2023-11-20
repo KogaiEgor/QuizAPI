@@ -3,6 +3,7 @@ from docx import Document
 
 
 def save_result(candidate_id, quiz_id, result, question_count):
+    """Сохраняет результат прохождения тестирования пользователем в бд"""
     quiz = Quiz.objects.get(id=quiz_id)
     res = f'{int(result["result"])}/{question_count}'
     candidate = Candidate.objects.get(id=candidate_id)
@@ -10,6 +11,7 @@ def save_result(candidate_id, quiz_id, result, question_count):
 
 
 def filter_quiz(quiz):
+    """Достает тест из бд и преобразует его в формат для json"""
     questions = Question.objects.filter(quiz=quiz)
     q = questions.values()
 
@@ -20,6 +22,7 @@ def filter_quiz(quiz):
 
 
 def create_quiz_from_docx(file):
+    """Парсит присланный docx файл и сохраняет его в бд"""
     try:
         doc = Document(file)
         if doc.paragraphs[0].style.name == 'Heading 1':
