@@ -1,34 +1,38 @@
 from .models import Quiz, Answer, Question, Candidate, Result
 from docx import Document
 from .serializers import QuestionSerializer, AnswerSerializer
+from django.core.exceptions import ObjectDoesNotExist
 
 
 def save_result(candidate_id, quiz_id, result, question_count):
     """Сохраняет результат прохождения тестирования пользователем в бд"""
-    quiz = Quiz.objects.get(id=quiz_id)
-    res = f'{int(result["result"])}/{question_count}'
-    candidate = Candidate.objects.get(id=candidate_id)
-    return Result.objects.create(quiz=quiz, candidate=candidate, result=res)
+    try:
+        if int(result["result"]) > question_count:
+            return "Error: number of questions should be greater or equal result"
+        quiz = Quiz.objects.get(id=quiz_id)
+        candidate = Candidate.objects.get(id=candidate_id)
+        res = f'{int(result["result"])}/{question_count}'
+        return Result.objects.create(quiz=quiz, candidate=candidate, result=res)
+    except ObjectDoesNotExist as e:
+        return f"Error: {str(e)}"
 
 
 def filter_quiz(quiz):
     """Достает тест из бд и преобразует его в формат для json"""
+    try:
+        questions = Question.objects.filter(quiz=quiz)
+        q_serializer = QuestionSerializer(questions, many=True)
+    except ObjectDoesNotExist:
+        return "Error: quiz was not found", None, None
 
-    questions = Question.objects.filter(quiz=quiz)
-    q_serializer = QuestionSerializer(questions, many=True)
+    try:
+        question_ids = questions.values_list('id', flat=True)
+        answers = Answer.objects.filter(question__in=question_ids)
+        a_serializer = AnswerSerializer(answers, many=True)
+    except ObjectDoesNotExist:
+        return "Error: questions was not found", None, None
 
-    question_ids = questions.values_list('id', flat=True)
-    answers = Answer.objects.filter(question__in=question_ids)
-    a_serializer = AnswerSerializer(answers, many=True)
-
-    return q_serializer.data, a_serializer.data
-"""    questions = Question.objects.filter(quiz=quiz)
-q = questions.values()
-
-question_ids = questions.values_list('id', flat=True)
-answers = Answer.objects.filter(question__in=question_ids)
-ans = answers.values()
-return q, ans"""
+    return q_serializer.data, a_serializer.data , len(question_ids)
 
 
 def create_quiz_from_docx(file):

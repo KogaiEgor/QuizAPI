@@ -1,15 +1,10 @@
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from .models import Quiz, Answer, Question
-from .forms import CandidateForm
 from .services import save_result, filter_quiz, create_quiz_from_docx
 from rest_framework.views import APIView
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, CreateAPIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import FileUploadParser
 from .serializers import *
-
 
 
 class UploadQuizView(APIView):
@@ -30,6 +25,7 @@ class GetQuizList(ListAPIView):
     queryset = Quiz.objects.all()
     serializer_class = QuizSerializer
 
+
 class GetInfoAndQuiz(APIView):
     def post(self, request, quiz):
         serializer = CandidateSerializer(data=request.data)
@@ -37,8 +33,8 @@ class GetInfoAndQuiz(APIView):
             candidate = serializer.save()
             request.session['candidate_id'] = candidate.id
 
-            q, ans = filter_quiz(quiz)
-
+            q, ans, number_of_questions = filter_quiz(quiz)
+            request.session['number_of_questions'] = number_of_questions
             return Response({
                 'candidate_id': candidate.id,
                 'candidate_fullname': candidate.fullname,
@@ -46,14 +42,13 @@ class GetInfoAndQuiz(APIView):
                 'answers': ans
             })
 
-        return Response({'form': serializer.errors})
+        return Response({'Error': serializer.errors})
 
 
 class SaveResultView(APIView):
     def post(self, request, quiz):
-        candidate_id = request.session.get('candidate_id')
-        questions = Question.objects.filter(quiz=quiz)
-        result = save_result(candidate_id, quiz, request.data, len(questions))
-        if result:
+        result = save_result(candidate_id=request.session.get('candidate_id'), quiz_id=quiz,
+                             result=request.data, question_count=request.session.get('number_of_questions'))
+        if isinstance(result, Result):
             return Response({'success': 'Result submitted'}, status=status.HTTP_200_OK)
-        return Response({'error': 'Failed to save result'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': result}, status=status.HTTP_400_BAD_REQUEST)
