@@ -16,6 +16,7 @@ class QuestionSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ResultSerializer(serializers.ModelSerializer):
+    result = serializers.CharField(read_only=True)
     class Meta:
         model = Result
         fields = '__all__'
@@ -29,3 +30,8 @@ class CandidateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Candidate
         fields = '__all__'
+
+    def validate_email(self, value):
+        if Candidate.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Этот email уже занят")
+        return value
