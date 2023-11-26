@@ -1,8 +1,15 @@
-from .models import Quiz, Answer, Question, Candidate, Result
+from .models import *
 from docx import Document
 from .serializers import QuestionSerializer, AnswerSerializer
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework import permissions
 
+
+
+def check_creator(telegram_id):
+    if Creator.objects.filter(telegram_id=telegram_id):
+        return True
+    return False
 
 def save_result(candidate_id, quiz_id, result, question_count):
     """Сохраняет результат прохождения тестирования пользователем в бд"""
@@ -71,3 +78,12 @@ def create_answer(question, content, is_correct):
     if not question:
         raise ValueError("Missing question for answer")
     return Answer.objects.create(question=question, content=content, is_correct=is_correct)
+
+
+class CreatorPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        telegram_id = request.META.get('telegram_id')
+        if not telegram_id:
+            return False
+        creator = Creator.objects.filter(telegram_id=telegram_id).exists()
+        return creator

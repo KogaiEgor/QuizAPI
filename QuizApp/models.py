@@ -1,7 +1,16 @@
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 
+
+class Creator(models.Model):
+    telegram_id = models.PositiveBigIntegerField()
+    username = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.username
+
 class Quiz(models.Model):
+    creator = models.ForeignKey(Creator, related_name='creator', on_delete=models.CASCADE)
     title = models.CharField(max_length=100)
 
     def __str__(self):
@@ -39,5 +48,3 @@ class Result(models.Model):
 
     def __str__(self):
         return self.result
-
-
