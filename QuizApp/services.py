@@ -5,8 +5,8 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import permissions
 
 
-
 def check_creator(telegram_id):
+    """Проверка является ли пользователь создателем теста"""
     if Creator.objects.filter(telegram_id=telegram_id):
         return True
     return False
@@ -42,12 +42,12 @@ def filter_quiz(quiz):
     return q_serializer.data, a_serializer.data , len(question_ids)
 
 
-def create_quiz_from_docx(file):
+def create_quiz_from_docx(file, creator_id):
     """Парсит присланный docx файл и сохраняет его в бд"""
     try:
         doc = Document(file)
         if doc.paragraphs[0].style.name == 'Heading 1':
-            quiz = Quiz.objects.create(title=doc.paragraphs[0].text)
+            quiz = Quiz.objects.create(title=doc.paragraphs[0].text, creator_id=creator_id)
         else:
             raise ValueError("Wrong file content")
 
@@ -82,7 +82,11 @@ def create_answer(question, content, is_correct):
 
 class CreatorPermission(permissions.BasePermission):
     def has_permission(self, request, view):
-        telegram_id = request.META.get('telegram_id')
+        try:
+            telegram_id = request.data['telegram_id'] #request.META.get('telegram_id')
+        # Возможно надо будет поменять, решение буде когда станет понятно как телеграм возвращает данные
+        except:
+            return False
         if not telegram_id:
             return False
         creator = Creator.objects.filter(telegram_id=telegram_id).exists()

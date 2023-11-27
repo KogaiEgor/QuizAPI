@@ -10,9 +10,10 @@ from django.shortcuts import redirect
 
 
 class SeeResults(ListAPIView):
+    serializer_class = ResultSerializer
     permission_classes = [CreatorPermission]
     def get_queryset(self):
-        quiz_id = self.kwargs.get('quiz_id')
+        quiz_id = self.kwargs.get('quiz')
         return Result.objects.filter(quiz_id=quiz_id)
 
 class CreateCreator(CreateAPIView):
@@ -39,7 +40,7 @@ class UploadQuizView(APIView):
 
         if serializer.is_valid():
             file = serializer.validated_data['docx_file']
-            result = create_quiz_from_docx(file)
+            result = create_quiz_from_docx(file, self.kwargs['creator_id'])
             return Response({'result': result}, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -63,7 +64,7 @@ class GetQuizList(ListAPIView):
             return redirect(f'/{creator_id}/getquiz/{quiz_id}/')
 
 class GetInfoAndQuiz(APIView):
-    def post(self, request, quiz):
+    def post(self, request, quiz, creator_id):
         serializer = CandidateSerializer(data=request.data)
         if serializer.is_valid():
             candidate = serializer.save()
@@ -82,7 +83,7 @@ class GetInfoAndQuiz(APIView):
 
 
 class SaveResultView(APIView):
-    def post(self, request, quiz):
+    def post(self, request, quiz, creator_id):
         result = save_result(candidate_id=request.session.get('candidate_id'), quiz_id=quiz,
                              result=request.data, question_count=request.session.get('number_of_questions'))
         if isinstance(result, Result):
