@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.parsers import FileUploadParser
 from .serializers import *
 from rest_framework.permissions import AllowAny
+from rest_framework.exceptions import NotFound
 from django.shortcuts import redirect
 
 
@@ -14,9 +15,18 @@ class SeeResults(ListAPIView):
     permission_classes = [CreatorPermission]
     def get_queryset(self):
         quiz_id = self.kwargs.get('quiz')
-        return Result.objects.filter(quiz_id=quiz_id)
+        queryset = Result.objects.filter(quiz_id=quiz_id)
+        if not queryset.exists():
+            raise NotFound(detail='Quiz results not found')
+
+        return queryset
+
 
 class CreateCreator(CreateAPIView):
+    """ Endpoint for creating a creator or finding existing
+    get telegram_id and username
+    return id, telegram_id, username
+    """
     serializer_class = CreatorSerializer
     permission_classes = [AllowAny]
 
@@ -24,14 +34,15 @@ class CreateCreator(CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        try:
-            creator = serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        creator = serializer.save()
+        return Response({'id': creator.id}, status=status.HTTP_200_OK)
 
 
 class UploadQuizView(APIView):
+    """Endpoint for uploading quizes
+    get telegram_id and file.docx
+    return status
+    """
     permission_classes = [CreatorPermission]
     parser_class = (FileUploadParser,)
 
@@ -63,6 +74,7 @@ class GetQuizList(ListAPIView):
         else:
             return redirect(f'/{creator_id}/getquiz/{quiz_id}/')
 
+
 class GetInfoAndQuiz(APIView):
     def post(self, request, quiz, creator_id):
         serializer = CandidateSerializer(data=request.data)
@@ -79,7 +91,7 @@ class GetInfoAndQuiz(APIView):
                 'answers': ans
             })
 
-        return Response({'Error': serializer.errors})
+        return Response({'Error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class SaveResultView(APIView):
@@ -89,3 +101,4 @@ class SaveResultView(APIView):
         if isinstance(result, Result):
             return Response({'success': 'Result submitted'}, status=status.HTTP_200_OK)
         return Response({'error': result}, status=status.HTTP_400_BAD_REQUEST)
+
