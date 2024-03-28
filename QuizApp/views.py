@@ -12,7 +12,7 @@ from django.shortcuts import redirect
 
 class SeeResults(ListAPIView):
     serializer_class = ResultSerializer
-    permission_classes = [CreatorPermission]
+    # permission_classes = [CreatorPermission]
     def get_queryset(self):
         quiz_id = self.kwargs.get('quiz')
         queryset = Result.objects.filter(quiz_id=quiz_id)
@@ -43,7 +43,7 @@ class UploadQuizView(APIView):
     get telegram_id and file.docx
     return status
     """
-    permission_classes = [CreatorPermission]
+    # permission_classes = [CreatorPermission]
     parser_class = (FileUploadParser,)
 
     def post(self, request, *args, **kwargs):
